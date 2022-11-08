@@ -85,8 +85,11 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		StripAndGive(i);
-		Points[i] = 0.0;
+		if (IsValidClient(i))
+		{
+			StripAndGive(i);
+			Points[i] = 0.0;
+		}
 	}
 }
 
