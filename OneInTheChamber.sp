@@ -20,6 +20,7 @@ EngineVersion g_Game;
 
 ConVar oitc_maxRounds;
 ConVar oitc_maxPoints;
+ConVar oitc_weapon;
 
 float Points[MAXPLAYERS + 1];
 int Round;
@@ -46,6 +47,7 @@ public void OnPluginStart()
 	
 	oitc_maxPoints = CreateConVar("oitc_maxpoints", "25", "The maximum amount of points to gain before winning the game");
 	oitc_maxRounds = CreateConVar("oitc_maxrounds", "3", "The maximum amount of rounds before switching the map");
+	oitc_weapon = CreateConVar("oitc_weapon", "weapon_ak47", "The weapon to use for gameplay");
 	
 	HookEvent("player_spawned", Event_PlayerSpawned); //Different events to hook
 	HookEvent("player_death", Event_PlayerDeath);
@@ -234,7 +236,9 @@ public Action StripAndGive(int client)
 
 public Action GiveWeapon(int client)
 {
-	GivePlayerItem(client, "weapon_elite", 0);
+	char weapon_name[16];
+	oitc_weapon.GetString(weapon_name, 16);
+	GivePlayerItem(client, weapon_name, 0);
 	int weapon =  GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 	SetAmmo(client, weapon, 1);
 	GivePlayerItem(client, "weapon_knife", 0);
