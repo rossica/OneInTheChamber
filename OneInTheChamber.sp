@@ -89,7 +89,7 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
 	{
 		if (IsValidClient(i))
 		{
-			StripAndGive(i);
+			StripAndGive(i, false);
 			Points[i] = 0.0;
 		}
 	}
@@ -98,7 +98,7 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
 public Action Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	StripAndGive(client);
+	StripAndGive(client, false);
 }
 
 public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -111,8 +111,10 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
 {
     int userid = GetEventInt(event, "attacker");
     int attacker = GetClientOfUserId(userid);
+	char weaponName[32];
+	GetEventString(event, "weapon", weaponName, sizeof(weaponName), "");
     SetEventInt(event, "health", 0);
-    StripAndGive(attacker);
+    StripAndGive(attacker, StrEqual(weaponName, "knife"));
     Points[attacker] += 1;
     if(Points[attacker] >= GetConVarFloat(oitc_maxPoints))
     {
@@ -227,25 +229,35 @@ public Action OnTakeDamage(int victim, int&attacker, int&inflictor, float&damage
 	return Plugin_Continue;
 }
 
-public Action StripAndGive(int client)
+public void StripAndGive(int client, bool keepAmmo)
 {
-	StripWeapon(client);
+	int ammo = StripWeapon(client, keepAmmo);
+
+	if (keepAmmo)
+	{
+		ammo += 1;
+	}
+	else
+	{
+		ammo = 1; // Give only 1 bullet
+	}
 	
-	GiveWeapon(client);
+	GiveWeapon(client, ammo);
 }
 
-public Action GiveWeapon(int client)
+public void GiveWeapon(int client, int ammo)
 {
 	char weapon_name[16];
-	oitc_weapon.GetString(weapon_name, 16);
+	oitc_weapon.GetString(weapon_name, sizeof(weapon_name));
 	GivePlayerItem(client, weapon_name, 0);
 	int weapon =  GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-	SetAmmo(client, weapon, 1);
+	SetAmmo(client, weapon, ammo);
 	GivePlayerItem(client, "weapon_knife", 0);
 }
 
-public Action StripWeapon(int client)
+public int StripWeapon(int client, bool getAmmo)
 {
+	int ammo = 0;
 	int weapon = -1;
 	if(client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) > 1) 
     {
@@ -256,20 +268,30 @@ public Action StripWeapon(int client)
             {
                 if(IsValidEntity(weapon)) 
                 {
+					if (getAmmo) {
+						char weaponName[32];
+						char weaponCvar[32];
+						GetEntityClassname(weapon, weaponName, sizeof(weaponName));
+						oitc_weapon.GetString(weaponCvar, sizeof(weaponCvar));
+						if (StrEqual(weaponName, weaponCvar)) {
+							ammo = GetClipAmmo(client, weapon);
+						}
+					}
                     RemovePlayerItem(client, weapon);
                 }
             }
         }
     }
+	return ammo;
 }
 
 public Action RespawnClient(Handle timer, int client)
 {
 	CS_RespawnPlayer(client);
-	StripAndGive(client);
+	StripAndGive(client, false);
 }
 
-public Action SetAmmo(int client, int weapon, int ammo)
+public void SetAmmo(int client, int weapon, int ammo)
 { 
   if (IsValidEntity(weapon)) {
     //Primary ammo
@@ -285,7 +307,7 @@ public Action CS_OnBuyCommand(int client, const char[] weapon)
 	return Plugin_Handled;
 }
 
-stock int SetReserveAmmo(int client, char weapon, int ammo)
+stock void SetReserveAmmo(int client, char weapon, int ammo)
 {
   SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo); //set reserve to 0
     
@@ -296,10 +318,16 @@ stock int SetReserveAmmo(int client, char weapon, int ammo)
 }
 
 
-stock int SetClipAmmo(int client, char weapon, int ammo)
+stock void SetClipAmmo(int client, char weapon, int ammo)
 {
   SetEntProp(weapon, Prop_Send, "m_iClip1", ammo);
-  SetEntProp(weapon, Prop_Send, "m_iClip2", ammo);
+  SetEntProp(weapon, Prop_Send, "m_iClip2", ammo); // m_iClip2 is only used for weapons that have 2 clips, i.e. HL2 grenade launcher SMG
+}
+
+stock int GetClipAmmo(int client, char weapon)
+{
+	return
+		GetEntProp(weapon, Prop_Send, "m_iClip1", 1);
 }
 
 stock bool IsValidClient(int client)
