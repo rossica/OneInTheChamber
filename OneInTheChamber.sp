@@ -29,7 +29,12 @@ int Round;
 
 char nextmap[128];
 
-ArrayList multihit[MAXPLAYERS + 1];
+enum struct HitData {
+    int attackerId;
+    int hits;
+}
+
+HitData multihit[MAXPLAYERS + 1];
 
 /* Plugin info */
 public Plugin myinfo =
@@ -122,14 +127,13 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
         StripAndGive(attacker, 1);
     } else {
         // The player was shot, see if it's a multihit
-        int userid = GetEventInt(event, "userid");
-        if(multihit[attacker] == null)
+        if(multihit[attacker].attackerId == 0)
         {
             RequestFrame(Frame_Multihit, attacker);
-            multihit[attacker] = new ArrayList();
-            multihit[attacker].Push(attackerid);
+            multihit[attacker].attackerId = attackerid;
+            multihit[attacker].hits = 0;
         }
-        multihit[attacker].Push(userid);
+        multihit[attacker].hits += 1;
     }
     Points[attacker] += 1;
     if(Points[attacker] >= GetConVarFloat(oitc_maxPoints))
@@ -189,25 +193,26 @@ public Action SetPoints(int client, int args)
 
 public void Frame_Multihit(int data)
 {
-    if (multihit[data] == null) {
+    if (multihit[data].attackerId == 0) {
+        multihit[data].hits = 0;
         return;
     }
 
-    int Length = multihit[data].Length;
-
-    if (Length < 2) {
+    if (multihit[data].hits < 1) {
         PrintToServer("Player didn't hit anyone?!");
-        delete multihit[data];
+        multihit[data].attackerId = 0;
+        multihit[data].hits = 0;
         return;
     }
 
     // Get the attacker to make sure they're still in game
-    int attacker = GetClientOfUserId(multihit[data].Get(0));
+    int attacker = GetClientOfUserId(multihit[data].attackerId);
 
     if (attacker > 0 && IsClientInGame(attacker)) {
-        StripAndGive(attacker, Length - 1); // Length includes the attacker's UserID, so subtract it.
+        StripAndGive(attacker, multihit[data].hits);
     }
-    delete multihit[data];
+    multihit[data].attackerId = 0;
+    multihit[data].hits = 0;
 }
 
 public void Frame_PlayerHurt(int userid)
