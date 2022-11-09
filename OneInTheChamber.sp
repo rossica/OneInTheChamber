@@ -29,6 +29,8 @@ int Round;
 
 char nextmap[128];
 
+ArrayList multihit[MAXPLAYERS + 1];
+
 /* Plugin info */
 public Plugin myinfo =
 {
@@ -91,7 +93,7 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
     {
         if (IsValidClient(i))
         {
-            StripAndGive(i, false);
+            StripAndGive(i, 0);
             Points[i] = 0.0;
         }
     }
@@ -100,7 +102,7 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
 public Action Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(GetEventInt(event, "userid"));
-    StripAndGive(client, false);
+    StripAndGive(client, 0);
 }
 
 public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -111,16 +113,28 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
 
 public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 {
-    int userid = GetEventInt(event, "attacker");
-    int attacker = GetClientOfUserId(userid);
+    int attackerid = GetEventInt(event, "attacker");
+    int attacker = GetClientOfUserId(attackerid);
     char weaponName[WEAPON_NAME_LEN];
     GetEventString(event, "weapon", weaponName, sizeof(weaponName), "");
     SetEventInt(event, "health", 0);
-    StripAndGive(attacker, StrEqual(weaponName, "knife"));
+    if (StrEqual(weaponName, "knife")) {
+        StripAndGive(attacker, 1);
+    } else {
+        // The player was shot, see if it's a multihit
+        int userid = GetEventInt(event, "userid");
+        if(multihit[attacker] == null)
+        {
+            RequestFrame(Frame_Multihit, attacker);
+            multihit[attacker] = new ArrayList();
+            multihit[attacker].Push(attackerid);
+        }
+        multihit[attacker].Push(userid);
+    }
     Points[attacker] += 1;
     if(Points[attacker] >= GetConVarFloat(oitc_maxPoints))
     {
-        RequestFrame(Frame_PlayerHurt, userid);
+        RequestFrame(Frame_PlayerHurt, attackerid);
     }
     else
     {
@@ -171,6 +185,29 @@ public Action SetPoints(int client, int args)
     Points[target] = pointNum;
     PrintToChatAll(" \x06%N \x0Bset \x06%N's \x0Bpoints to \x06%.2f", client, target, pointNum);
     return Plugin_Handled;
+}
+
+public void Frame_Multihit(int data)
+{
+    if (multihit[data] == null) {
+        return;
+    }
+
+    int Length = multihit[data].Length;
+
+    if (Length < 2) {
+        PrintToServer("Player didn't hit anyone?!");
+        delete multihit[data];
+        return;
+    }
+
+    // Get the attacker to make sure they're still in game
+    int attacker = GetClientOfUserId(multihit[data].Get(0));
+
+    if (attacker > 0 && IsClientInGame(attacker)) {
+        StripAndGive(attacker, Length - 1); // Length includes the attacker's UserID, so subtract it.
+    }
+    delete multihit[data];
 }
 
 public void Frame_PlayerHurt(int userid)
@@ -231,20 +268,20 @@ public Action OnTakeDamage(int victim, int&attacker, int&inflictor, float&damage
     return Plugin_Continue;
 }
 
-public void StripAndGive(int client, bool keepAmmo)
+public void StripAndGive(int client, int newAmmo)
 {
-    int ammo = StripWeapon(client, keepAmmo);
+    int prevAmmo = StripWeapon(client, newAmmo > 0);
 
-    if (keepAmmo)
+    if (newAmmo > 0)
     {
-        ammo += 1;
+        prevAmmo += newAmmo;
     }
     else
     {
-        ammo = 1; // Give only 1 bullet
+        prevAmmo = 1; // Give only 1 bullet
     }
 
-    GiveWeapon(client, ammo);
+    GiveWeapon(client, prevAmmo);
 }
 
 public void GiveWeapon(int client, int ammo)
@@ -289,8 +326,10 @@ public int StripWeapon(int client, bool getAmmo)
 
 public Action RespawnClient(Handle timer, int client)
 {
-    CS_RespawnPlayer(client);
-    StripAndGive(client, false);
+    if (IsClientInGame(client)) {
+        CS_RespawnPlayer(client);
+        StripAndGive(client, 0);
+    }
 }
 
 public void SetAmmo(int client, int weapon, int ammo)
