@@ -5,6 +5,8 @@
 #define PLUGIN_AUTHOR "Diam0ndz"
 #define PLUGIN_VERSION "1.0"
 
+#define WEAPON_NAME_LEN 32
+
 /* Default includes */
 #include <sourcemod>
 #include <sdktools>
@@ -111,7 +113,7 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
 {
     int userid = GetEventInt(event, "attacker");
     int attacker = GetClientOfUserId(userid);
-    char weaponName[32];
+    char weaponName[WEAPON_NAME_LEN];
     GetEventString(event, "weapon", weaponName, sizeof(weaponName), "");
     SetEventInt(event, "health", 0);
     StripAndGive(attacker, StrEqual(weaponName, "knife"));
@@ -247,7 +249,7 @@ public void StripAndGive(int client, bool keepAmmo)
 
 public void GiveWeapon(int client, int ammo)
 {
-    char weapon_name[16];
+    char weapon_name[WEAPON_NAME_LEN];
     oitc_weapon.GetString(weapon_name, sizeof(weapon_name));
     GivePlayerItem(client, weapon_name, 0);
     int weapon =  GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -269,8 +271,8 @@ public int StripWeapon(int client, bool getAmmo)
                 if(IsValidEntity(weapon))
                 {
                     if (getAmmo) {
-                        char weaponName[32];
-                        char weaponCvar[32];
+                        char weaponName[WEAPON_NAME_LEN];
+                        char weaponCvar[WEAPON_NAME_LEN];
                         GetEntityClassname(weapon, weaponName, sizeof(weaponName));
                         oitc_weapon.GetString(weaponCvar, sizeof(weaponCvar));
                         if (StrEqual(weaponName, weaponCvar)) {
