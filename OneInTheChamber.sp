@@ -27,8 +27,6 @@ ConVar oitc_weapon;
 float Points[MAXPLAYERS + 1];
 int Round;
 
-char nextmap[128];
-
 enum struct HitData {
     int attackerId;
     int hits;
@@ -56,7 +54,7 @@ public void OnPluginStart()
 
     oitc_maxPoints = CreateConVar("oitc_maxpoints", "25", "The maximum amount of points to gain before winning the game");
     oitc_maxRounds = CreateConVar("oitc_maxrounds", "3", "The maximum amount of rounds before switching the map");
-    oitc_weapon = CreateConVar("oitc_weapon", "weapon_ak47", "The weapon to use for gameplay");
+    oitc_weapon = CreateConVar("oitc_weapon", "weapon_tec9", "The weapon to use for gameplay");
 
     HookEvent("player_spawned", Event_PlayerSpawned); //Different events to hook
     HookEvent("player_death", Event_PlayerDeath);
@@ -77,11 +75,13 @@ public void OnMapStart()
     ServerCommand("mp_death_drop_grenade 0");
     ServerCommand("mp_freezetime 2");
     ServerCommand("mp_warmuptime 0");
-    ServerCommand("mp_roundtime_defuse 5");
     ServerCommand("mp_do_warmup_period 0");
-    ServerCommand("mp_roundtime_hostage 5");
     ServerCommand("mp_teammates_are_enemies 1");
     ServerCommand("mp_ignore_round_win_conditions 1");
+    ServerCommand("mp_roundtime 5");
+    ServerCommand("mp_timelimit 8");
+    ServerCommand("mp_join_grace_time 300"); // roundtime * 60
+    //mp_endmatch_votenextmap
     ServerCommand("mp_maxrounds %i", GetConVarInt(oitc_maxRounds));
 }
 
@@ -199,7 +199,7 @@ public void Frame_Multihit(int data)
     }
 
     if (multihit[data].hits < 1) {
-        PrintToServer("Player didn't hit anyone?!");
+        PrintToServer("[OITC] player didn't hit anyone?!");
         multihit[data].attackerId = 0;
         multihit[data].hits = 0;
         return;
@@ -229,26 +229,30 @@ stock void PlayerWon(int client)
 {
     PrintToChatAll(" \x06%N \x0Bwon with \x06%.2f \x0Bpoints !", client, Points[client]);
     PrintCenterTextAll(" \x06%N \x0Bwon with \x06%.2f \x0Bpoints !", client, Points[client]);
+    CSRoundEndReason reason = CSRoundEnd_Draw;
+    int team = GetClientTeam(client);
+    if (team == CS_TEAM_T) {
+        reason = CSRoundEnd_TerroristWin;
+    } else if (team == CS_TEAM_CT) {
+        reason = CSRoundEnd_CTWin;
+    }
+
     if(Round < GetConVarInt(oitc_maxRounds))
     {
-        CS_TerminateRound(8.0, CSRoundEnd_GameStart, true);
+        CS_TerminateRound(2.0, reason, true);
         Round += 1;
         Points[client] = 0.0;
         PrintToChatAll(" \x0BCurrently starting round \x06%i \x0Bout of round \x06%i", Round, GetConVarInt(oitc_maxRounds));
     }
     else
     {
-        CS_TerminateRound(7.0, CSRoundEnd_GameStart, true);
+        CS_TerminateRound(5.0, reason, true);
+        // Event endmatch = CreateEvent("cs_win_panel_match");
+        // if (endmatch != null) {
+        //     endmatch.Fire();
+        // }
         PrintCenterTextAll("\x0BThe final round has ended!");
-        GetNextMap(nextmap, sizeof(nextmap));
-        PrintToChatAll(" \x0BChanging Map to\x06 %s \x0Bin 3 seconds...", nextmap);
-        CreateTimer(0.5, Timer_SwitchMap);
     }
-}
-
-public Action Timer_SwitchMap(Handle timer)
-{
-    ServerCommand("sm_map %s", nextmap);
 }
 
 public Action CS_OnCSWeaponDrop(int client, int weapon)
