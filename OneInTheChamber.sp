@@ -102,18 +102,21 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
             Points[i] = 0.0;
         }
     }
+    return Plugin_Continue;
 }
 
 public Action Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(GetEventInt(event, "userid"));
     StripAndGive(client, 0);
+    return Plugin_Continue;
 }
 
 public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(GetEventInt(event, "userid"));
     CreateTimer(0.5, RespawnClient, client);
+    return Plugin_Continue;
 }
 
 public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
@@ -144,6 +147,7 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
     {
         PrintHintText(attacker, "Points : %.2f/%.2f", Points[attacker], GetConVarFloat(oitc_maxPoints));
     }
+    return Plugin_Continue;
 }
 
 public Action SetPoints(int client, int args)
@@ -337,6 +341,7 @@ public Action RespawnClient(Handle timer, int client)
         CS_RespawnPlayer(client);
         StripAndGive(client, 0);
     }
+    return Plugin_Continue;
 }
 
 public void SetAmmo(int client, int weapon, int ammo)
