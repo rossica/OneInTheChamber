@@ -77,9 +77,9 @@ public void OnMapStart()
     ServerCommand("mp_warmuptime 0");
     ServerCommand("mp_do_warmup_period 0");
     ServerCommand("mp_teammates_are_enemies 1");
-    ServerCommand("mp_ignore_round_win_conditions 1");
+    ServerCommand("mp_ignore_round_win_conditions 0");
     ServerCommand("mp_roundtime 5");
-    ServerCommand("mp_timelimit 8");
+    ServerCommand("mp_timelimit 10");
     ServerCommand("mp_join_grace_time 300"); // roundtime * 60
     //mp_endmatch_votenextmap
     ServerCommand("mp_maxrounds %i", GetConVarInt(oitc_maxRounds));
@@ -247,11 +247,9 @@ stock void PlayerWon(int client)
     else
     {
         CS_TerminateRound(5.0, reason, true);
-        // Event endmatch = CreateEvent("cs_win_panel_match");
-        // if (endmatch != null) {
-        //     endmatch.Fire();
-        // }
         PrintCenterTextAll("\x0BThe final round has ended!");
+        SetConVarInt(FindConVar("mp_timelimit"), 0, false, false);
+        SetConVarInt(FindConVar("mp_maxrounds"), 0, false, false);
     }
 }
 
