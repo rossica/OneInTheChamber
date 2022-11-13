@@ -77,7 +77,7 @@ public void OnMapStart()
     ServerCommand("mp_warmuptime 0");
     ServerCommand("mp_do_warmup_period 0");
     ServerCommand("mp_teammates_are_enemies 1");
-    ServerCommand("mp_ignore_round_win_conditions 0");
+    ServerCommand("mp_ignore_round_win_conditions 1");
     ServerCommand("mp_roundtime 5");
     ServerCommand("mp_timelimit 10");
     ServerCommand("mp_join_grace_time 300"); // roundtime * 60
