@@ -6,6 +6,8 @@
 #define PLUGIN_VERSION "1.0"
 
 #define WEAPON_NAME_LEN 32
+#define WIN_MULTIPLIER 1000
+#define KILL_MULTIPLIER 100
 
 /* Default includes */
 #include <sourcemod>
@@ -101,7 +103,8 @@ public Action Event_RoundPostStart(Event event, const char[] name, bool dontBroa
         if (IsValidClient(i))
         {
             StripAndGive(i, 0);
-            Points[i] = 0.0;
+            Points[i] = 0;
+            CS_SetClientContributionScore(i, 0);
         }
     }
     return Plugin_Continue;
@@ -141,6 +144,7 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
         multihit[attacker].hits += 1;
     }
     Points[attacker] += 1;
+    CS_SetClientContributionScore(attacker, Points[attacker] * KILL_MULTIPLIER);
     if(Points[attacker] >= GetConVarInt(oitc_maxPoints))
     {
         RequestFrame(Frame_PlayerHurt, attackerid);
@@ -242,16 +246,23 @@ stock void PlayerWon(int client)
     } else if (team == CS_TEAM_CT) {
         reason = CSRoundEnd_CTWin;
     }
+    Wins[client] += 1;
 
     if(Round < GetConVarInt(oitc_maxRounds))
     {
         CS_TerminateRound(2.0, reason, true);
         Round += 1;
-        Points[client] = 0.0;
+        Points[client] = 0;
         PrintToChatAll(" \x0BCurrently starting round \x06%i \x0Bout of round \x06%i", Round, GetConVarInt(oitc_maxRounds));
     }
     else
     {
+        for (int i = 1; i <= MaxClients; i++) {
+            if (IsValidClient(i)) {
+                CS_SetClientContributionScore(i, Wins[i] * WIN_MULTIPLIER);
+                CS_SetMVPCount(i, Wins[i]);
+            }
+        }
         CS_TerminateRound(5.0, reason, true);
         PrintCenterTextAll("\x0BThe final round has ended!");
         SetConVarInt(FindConVar("mp_timelimit"), 0, false, false);
