@@ -400,6 +400,5 @@ stock bool IsValidClient(int client)
 {
     if (client <= 0) return false;
     if (client > MaxClients) return false;
-    if (!IsClientConnected(client)) return false;
-    return IsClientInGame(client);
+    return IsClientConnected(client) && IsClientInGame(client);
 }
