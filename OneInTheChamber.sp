@@ -24,7 +24,8 @@ ConVar oitc_maxRounds;
 ConVar oitc_maxPoints;
 ConVar oitc_weapon;
 
-float Points[MAXPLAYERS + 1];
+int Points[MAXPLAYERS + 1];
+int Wins[MAXPLAYERS + 1];
 int Round;
 
 enum struct HitData {
@@ -88,7 +89,8 @@ public void OnMapStart()
 public void OnClientPutInServer(int client)
 {
     SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage); //Hook when you take damage
-    Points[client] = 0.0; //Set points to 0
+    Points[client] = 0; //Set points to 0
+    Wins[client] = 0;
     Round = 1;
 }
 
@@ -139,13 +141,13 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
         multihit[attacker].hits += 1;
     }
     Points[attacker] += 1;
-    if(Points[attacker] >= GetConVarFloat(oitc_maxPoints))
+    if(Points[attacker] >= GetConVarInt(oitc_maxPoints))
     {
         RequestFrame(Frame_PlayerHurt, attackerid);
     }
     else
     {
-        PrintHintText(attacker, "Points : %.2f/%.2f", Points[attacker], GetConVarFloat(oitc_maxPoints));
+        PrintHintText(attacker, "Points : %i/%i", Points[attacker], GetConVarInt(oitc_maxPoints));
     }
     return Plugin_Continue;
 }
@@ -182,16 +184,16 @@ public Action SetPoints(int client, int args)
     }
 
     char pointsToGive[32];
-    float pointNum = -1.0;
+    int pointNum = -1;
     GetCmdArg(2, pointsToGive, sizeof(pointsToGive));
-    pointNum = StringToFloat(pointsToGive);
-    if(pointNum > 24 || pointNum < 0)
+    pointNum = StringToInt(pointsToGive);
+    if(pointNum > GetConVarInt(oitc_maxPoints) - 1 || pointNum < 0)
     {
         ReplyToCommand(client, "Point value must be between 0 and 24!");
         return Plugin_Handled;
     }
     Points[target] = pointNum;
-    PrintToChatAll(" \x06%N \x0Bset \x06%N's \x0Bpoints to \x06%.2f", client, target, pointNum);
+    PrintToChatAll(" \x06%N \x0Bset \x06%N's \x0Bpoints to \x06%i", client, target, pointNum);
     return Plugin_Handled;
 }
 
@@ -231,8 +233,8 @@ public void Frame_PlayerHurt(int userid)
 
 stock void PlayerWon(int client)
 {
-    PrintToChatAll(" \x06%N \x0Bwon with \x06%.2f \x0Bpoints !", client, Points[client]);
-    PrintCenterTextAll(" \x06%N \x0Bwon with \x06%.2f \x0Bpoints !", client, Points[client]);
+    PrintToChatAll(" \x06%N \x0Bwon with \x06%i \x0Bpoints !", client, Points[client]);
+    PrintCenterTextAll(" \x06%N \x0Bwon with \x06%i \x0Bpoints !", client, Points[client]);
     CSRoundEndReason reason = CSRoundEnd_Draw;
     int team = GetClientTeam(client);
     if (team == CS_TEAM_T) {
