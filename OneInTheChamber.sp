@@ -129,6 +129,9 @@ public Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcas
     int attackerid = GetEventInt(event, "attacker");
     int attacker = GetClientOfUserId(attackerid);
     char weaponName[WEAPON_NAME_LEN];
+    if (attacker == 0) {
+        return Plugin_Continue;
+    }
     GetEventString(event, "weapon", weaponName, sizeof(weaponName), "");
     SetEventInt(event, "health", 0);
     if (StrEqual(weaponName, "knife")) {
